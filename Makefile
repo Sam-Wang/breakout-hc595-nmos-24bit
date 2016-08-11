@@ -15,11 +15,11 @@ DISPLAY_PRODUCTS = $(PNG_PRODUCTS)
 default: $(DISPLAY_PRODUCTS)
 
 $(BUILD):
-	mkdir -p build
+	mkdir -p $@
 
 distclean: clean
 	rm -vf $(DISPLAY_PRODUCTS)
-	rm -vf *.pcb- *.pcb.bak PCB.*.backup *.sch~
+	rm -vf *.pcb- *.sch~ *.bak *.backup *.net *.save
 
 clean:
 	rm -rvf $(BUILD)
@@ -72,3 +72,22 @@ $(BUILD)/layout-bottom-outlineonly.eps: $(PROJECT).pcb | $(BUILD)
 
 $(BUILD)/layout-bottom.png: $(BUILD)/layout-bottom-nooutline.eps $(BUILD)/layout-bottom-outlineonly.eps | $(BUILD)
 	./autosize-and-compose-layout.sh $^ $@
+
+$(BUILD)/gerber-files: $(PROJECT).pcb | $(BUILD)
+	rm -rf $@
+	mkdir -p $@
+	pcb -x gerber --gerberfile $@/$(PROJECT) $<
+	for i in $@/*.cnc; do mv -v $$i $$i.UNMERGED; done
+
+export-gerbers: $(BUILD)/gerber-files
+
+gerbv-drills: export-gerbers
+	gerbv $(BUILD)/gerber-files/*.cnc.UNMERGED
+
+$(BUILD)/$(PROJECT)-gerbers.zip: $(BUILD)/gerber-files | $(BUILD)
+	rm -rf $@
+	zip -j $@ $</*.gbr $</*.cnc 
+
+gerbers: $(BUILD)/$(PROJECT)-gerbers.zip
+
+
